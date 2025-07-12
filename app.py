@@ -67,7 +67,7 @@ def ld_dat():
             ]
         st.sidebar.success("Data loaded!")
     else:
-        st.session_state.members = ['Alice', 'Bob', 'Charlie']
+        st.session_state.members = ['Alice', 'Bob', 'Charlie', 'Tim']
         st.session_state.expenses = []
 
 # --- Core Logic ---
@@ -124,7 +124,7 @@ def sug_setts(bals):
 # --- UI Components ---
 
 def disp_mems():
-    st.header("👨‍👩‍👧‍👦 Manage Members")
+    st.header("Manage Members")
     curr_mems_input = st.text_area(
         "Edit Members (one name per line)",
         value="\n".join(st.session_state.members),
@@ -172,7 +172,7 @@ def disp_add_exp():
                 st.rerun()
 
 def disp_curr_bals():
-    st.header("📊 Current Balances")
+    st.header("Current Balances")
     bals = calc_bals(st.session_state.members, st.session_state.expenses)
 
     bals_df = pd.DataFrame(
@@ -189,7 +189,7 @@ def disp_curr_bals():
         st.success("All balances are currently settled!")
 
 def disp_exp_hist():
-    st.header("🧾 Expense History")
+    st.header("Expense History")
     if st.session_state.expenses:
         exps_data = []
         for exp in st.session_state.expenses:
@@ -216,7 +216,7 @@ def disp_exp_hist():
 
 # --- Main App ---
 def main():
-    st.title("🏡 Simple Household Splitter")
+    st.title("Simple Household Splitter(No More Cheating... You pay what you truly owe💵💵💵)")
 
     # Initial data load check
     if 'data_loaded_flag' not in st.session_state:
@@ -235,6 +235,6 @@ def main():
     st.markdown("---")
     disp_exp_hist()
 
-# Run
+# Run the code here
 if __name__ == "__main__":
     main()
