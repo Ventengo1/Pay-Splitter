@@ -2,10 +2,13 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import uuid
+import json
+import os
 
-#still want to work on adding some data record
-#Right now if you refresh page then all the data will go away
+# --- Configuration ---
+DATA_FILE = "household_data.json"
 
+# --- Data Structures ---
 # Representing a single expense
 class Expense:
     def __init__(self, description, amount, paid_by, participants, date):
@@ -14,16 +17,69 @@ class Expense:
         self.amount = float(amount)
         self.paid_by = paid_by # Name of the person who paid
         self.participants = participants # List of names of people involved in the split
-        self.date = date
+        # Ensure date is stored as a string for JSON serialization
+        self.date = date.strftime('%Y-%m-%d') if isinstance(date, datetime) else date
 
-# --- Session State Initialization ---
-# Streamlit's session_state allows data to persist across reruns
-if 'members' not in st.session_state:
-    st.session_state.members = ['Alice', 'Bob', 'Charlie'] # Default members
-if 'expenses' not in st.session_state:
-    st.session_state.expenses = []
+    def to_dict(self):
+        """Converts an Expense object to a dictionary for JSON serialization."""
+        return {
+            "id": self.id,
+            "description": self.description,
+            "amount": self.amount,
+            "paid_by": self.paid_by,
+            "participants": self.participants,
+            "date": self.date # Already a string
+        }
 
-# --- Functions for Core Logic ---
+    @classmethod
+    def from_dict(cls, data):
+        """Creates an Expense object from a dictionary (e.g., loaded from JSON)."""
+        # Convert date string back to datetime object
+        date_obj = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        return cls(
+            data['description'],
+            data['amount'],
+            data['paid_by'],
+            data['participants'],
+            date_obj
+        )
+
+# --- Data Persistence Functions ---
+
+def save_data(members, expenses):
+    """Saves members and expenses data to a JSON file."""
+    data_to_save = {
+        "members": members,
+        "expenses": [exp.to_dict() for exp in expenses]
+    }
+    with open(DATA_FILE, "w") as f:
+        json.dump(data_to_save, f, indent=4)
+    st.sidebar.success("Data saved!") # Optional: give feedback
+
+def load_data():
+    """Loads members and expenses data from a JSON file."""
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            data_loaded = json.load(f)
+            st.session_state.members = data_loaded.get("members", ['Alice', 'Bob', 'Charlie'])
+            # Reconstruct Expense objects from dictionaries
+            st.session_state.expenses = [
+                Expense.from_dict(exp_dict) for exp_dict in data_loaded.get("expenses", [])
+            ]
+        st.sidebar.success("Data loaded!") # Optional: give feedback
+    else:
+        # Initialize with defaults if file doesn't exist
+        st.session_state.members = ['Alice', 'Bob', 'Charlie']
+        st.session_state.expenses = []
+
+# --- Initial Data Load (before any Streamlit widgets are rendered) ---
+# This ensures data is loaded when the app starts or refreshes
+if 'data_loaded' not in st.session_state: # Use a flag to load only once per session
+    load_data()
+    st.session_state.data_loaded = True
+
+
+# --- Functions for Core Logic (No changes needed here from previous version) ---
 
 def calculate_balances(members, expenses):
     """Calculates who owes whom based on recorded expenses."""
@@ -47,34 +103,43 @@ def suggest_settlements(balances):
     Suggests the simplest way to settle balances.
     Finds who has positive balances (is owed money) and who has negative (owes money).
     """
-    # Filter out near-zero balances due to floating point inaccuracies
     clean_balances = {member: round(balance, 2) for member, balance in balances.items() if abs(balance) > 0.01}
 
-    # Separate debtors (owe money) and creditors (are owed money)
     debtors = {member: abs(balance) for member, balance in clean_balances.items() if balance < 0}
     creditors = {member: balance for member, balance in clean_balances.items() if balance > 0}
 
     settlements = []
 
-    # Simple settlement algorithm: process one by one
-    for debtor, debt_amount in sorted(debtors.items(), key=lambda item: item[1], reverse=True):
-        for creditor, credit_amount in sorted(creditors.items(), key=lambda item: item[1], reverse=True):
-            if debt_amount > 0 and credit_amount > 0:
-                payment_amount = min(debt_amount, credit_amount)
-                settlements.append((debtor, creditor, payment_amount))
+    # Sort debtors and creditors for a consistent settlement order (largest first)
+    sorted_debtors = sorted(debtors.items(), key=lambda item: item[1], reverse=True)
+    sorted_creditors = sorted(creditors.items(), key=lambda item: item[1], reverse=True)
 
-                debt_amount -= payment_amount
-                creditors[creditor] -= payment_amount # Reduce creditor's outstanding credit
+    # Use pointers to manage lists efficiently
+    debtor_idx = 0
+    creditor_idx = 0
 
-                # If creditor's balance is settled, remove them
-                if creditors[creditor] < 0.01:
-                    del creditors[creditor]
-        # Update debtor's remaining debt (if any)
-        debtors[debtor] = debt_amount
+    while debtor_idx < len(sorted_debtors) and creditor_idx < len(sorted_creditors):
+        debtor_name, current_debt = sorted_debtors[debtor_idx]
+        creditor_name, current_credit = sorted_creditors[creditor_idx]
 
-    # Filter out any remaining zero-debtors
+        if current_debt <= 0.01: # Debtor has paid off
+            debtor_idx += 1
+            continue
+        if current_credit <= 0.01: # Creditor has been paid
+            creditor_idx += 1
+            continue
+
+        payment_amount = min(current_debt, current_credit)
+        settlements.append((debtor_name, creditor_name, payment_amount))
+
+        # Update remaining amounts
+        sorted_debtors[debtor_idx] = (debtor_name, current_debt - payment_amount)
+        sorted_creditors[creditor_idx] = (creditor_name, current_credit - payment_amount)
+
+
     settlements = [(d, c, amt) for d, c, amt in settlements if amt > 0.01]
     return settlements
+
 
 # --- Streamlit UI ---
 
@@ -93,6 +158,7 @@ if st.button("Update Members"):
     new_members = [name.strip() for name in current_members_input.split('\n') if name.strip()]
     if new_members:
         st.session_state.members = new_members
+        save_data(st.session_state.members, st.session_state.expenses) # Save after update
         st.success("Members updated!")
         st.rerun() # Rerun to update select boxes
     else:
@@ -112,7 +178,8 @@ with st.form("add_expense_form", clear_on_submit=True):
     # Multiselect for who participated in the split
     participants = st.multiselect("Who is involved in the split?", options=st.session_state.members, default=st.session_state.members)
     
-    expense_date = st.date_input("Date", value=datetime.now())
+    # Use datetime.date for simplicity, as datetime.datetime can cause JSON issues with timezones
+    expense_date = st.date_input("Date", value=datetime.now().date()) 
 
     submitted = st.form_submit_button("Add Expense")
 
@@ -122,6 +189,7 @@ with st.form("add_expense_form", clear_on_submit=True):
         else:
             new_expense = Expense(description, amount, paid_by, participants, expense_date)
             st.session_state.expenses.append(new_expense)
+            save_data(st.session_state.members, st.session_state.expenses) # Save after adding expense
             st.success("Expense added successfully!")
             st.rerun() # Rerun to update balances and expense list
 
@@ -148,15 +216,15 @@ else:
 
 st.markdown("---")
 
-# --- Expense History Section ---
+# --- Expense History Section --- (my robotics teacher always wanted me to split things up like this)
 st.header("🧾 Expense History")
 if st.session_state.expenses:
-
+    # Prepare data for DataFrame display
     expenses_data = []
     for exp in st.session_state.expenses:
         expenses_data.append({
-            'ID': exp.id[:8] + '...', 
-            'Date': exp.date.strftime('%Y-%m-%d'),
+            'ID': exp.id[:8] + '...', # Shorten ID for display
+            'Date': exp.date, 
             'Description': exp.description,
             'Amount': f"${exp.amount:.2f}",
             'Paid By': exp.paid_by,
@@ -169,6 +237,7 @@ if st.session_state.expenses:
     st.markdown("---")
     if st.button("Clear All Expenses (Start Fresh)"):
         st.session_state.expenses = []
+        save_data(st.session_state.members, st.session_state.expenses) # Save after clearing
         st.success("All expenses cleared!")
         st.rerun()
 
