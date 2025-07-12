@@ -5,7 +5,7 @@ import uuid
 import json
 import os
 
-# --- Config ---
+ # --- Config ---
 DATA_FILE = "household_data.json"
 
 # --- Data Model ---
@@ -93,7 +93,7 @@ def sug_setts(bals):
     debtors = {mem: abs(bal) for mem, bal in clean_bals.items() if bal < 0}
     creds = {mem: bal for mem, bal in clean_bals.items() if bal > 0}
 
-    setts = []
+    setts = [ ]
 
     sorted_debtors = sorted(debtors.items(), key=lambda item: item[1], reverse=True)
     sorted_creds = sorted(creds.items(), key=lambda item: item[1], reverse=True)
@@ -130,7 +130,7 @@ def disp_mems():
         value="\n".join(st.session_state.members),
         height=100
     )
-    if st.button("Update Members"):
+    if st.button("Update Members") :
         new_mems = [name.strip() for name in curr_mems_input.split('\n') if name.strip()]
         st.session_state.members = new_mems
         sv_dat(st.session_state.members, st.session_state.expenses)
@@ -191,7 +191,7 @@ def disp_curr_bals():
 def disp_exp_hist():
     st.header("Expense History")
     if st.session_state.expenses:
-        exps_data = []
+        exps_data = [ ]
         for exp in st.session_state.expenses:
             exps_data.append({
                 'ID': exp.id[:8] + '...',
