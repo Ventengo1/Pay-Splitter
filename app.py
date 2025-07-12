@@ -3,9 +3,8 @@ import pandas as pd
 from datetime import datetime
 import uuid
 
-# --- Data Structures (Simplified, in-memory) ---
-# In a real app, this would be stored in a database.
-# Data will reset every time the Streamlit app restarts.
+#still want to work on adding some data record
+#Right now if you refresh page then all the data will go away
 
 # Representing a single expense
 class Expense:
@@ -152,11 +151,11 @@ st.markdown("---")
 # --- Expense History Section ---
 st.header("🧾 Expense History")
 if st.session_state.expenses:
-    # Prepare data for DataFrame display
+
     expenses_data = []
     for exp in st.session_state.expenses:
         expenses_data.append({
-            'ID': exp.id[:8] + '...', # Shorten ID for display
+            'ID': exp.id[:8] + '...', 
             'Date': exp.date.strftime('%Y-%m-%d'),
             'Description': exp.description,
             'Amount': f"${exp.amount:.2f}",
