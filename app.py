@@ -260,7 +260,7 @@ def disp_vis_sum():
     st.expander("⚖️ Net Balances", expanded=False)
     fig_bals = px.bar(bals_df, x='Member', y='Balance',
                       color='Balance',
-                      color_continuous_scale=px.colors.sequential.RdYlGn,
+                      color_continuous_scale='RdYlGn', # Corrected: Changed to string 'RdYlGn'
                       title='Net Balance Per Member')
     fig_bals.update_layout(showlegend=False)
     st.plotly_chart(fig_bals, use_container_width=True)
