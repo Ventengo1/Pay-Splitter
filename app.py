@@ -8,13 +8,27 @@ import plotly.express as px
 
 DATA_FILE = "household_data.json"
 
+DEFAULT_CATEGORIES = [
+    "Groceries",
+    "Utilities",
+    "Rent",
+    "Transport",
+    "Dining Out",
+    "Entertainment",
+    "Shopping",
+    "Health",
+    "Education",
+    "Miscellaneous"
+]
+
 class Exp:
-    def __init__(self, desc, amt, pd_by, parts, dt_obj):
+    def __init__(self, desc, amt, pd_by, parts, dt_obj, category="Uncategorized"):
         self.id = str(uuid.uuid4())
         self.description = desc
         self.amount = float(amt)
         self.paid_by = pd_by
         self.participants = parts
+        self.category = category
 
         if isinstance(dt_obj, (datetime, date)):
             self.date = dt_obj.strftime('%Y-%m-%d')
@@ -30,7 +44,8 @@ class Exp:
             "amount": self.amount,
             "paid_by": self.paid_by,
             "participants": self.participants,
-            "date": self.date
+            "date": self.date,
+            "category": self.category
         }
 
     @classmethod
@@ -40,7 +55,8 @@ class Exp:
             data['amount'],
             data['paid_by'],
             data['participants'],
-            data['date']
+            data['date'],
+            data.get('category', 'Uncategorized')
         )
 
 def sv_dat(mems, exps):
@@ -116,7 +132,7 @@ def sug_setts(bals):
     return setts
 
 def disp_mems():
-    st.header("👨‍👩‍👧‍👦 Manage Members")
+    st.header("Manage Members")
     curr_mems_input = st.text_area(
         "Edit Members (one name per line)",
         value="\n".join(st.session_state.members),
@@ -134,6 +150,7 @@ def disp_add_exp():
     with st.form("add_expense_form", clear_on_submit=True):
         desc = st.text_input("Description")
         amt = st.number_input("Amount ($)", min_value=0.01, format="%.2f")
+        category = st.selectbox("Category", options=DEFAULT_CATEGORIES, key="category_select")
 
         pd_by = None
         parts = []
@@ -156,14 +173,14 @@ def disp_add_exp():
             if not desc or pd_by is None or not parts:
                 st.error("Please fill in all fields (description, who paid, and who is involved).")
             else:
-                new_exp = Exp(desc, amt, pd_by, parts, exp_dt)
+                new_exp = Exp(desc, amt, pd_by, parts, exp_dt, category)
                 st.session_state.expenses.append(new_exp)
                 sv_dat(st.session_state.members, st.session_state.expenses)
                 st.success("Expense added successfully!")
                 st.rerun()
 
 def disp_curr_bals():
-    st.header("📊 Current Balances")
+    st.header("Current Balances")
     bals = calc_bals(st.session_state.members, st.session_state.expenses)
 
     bals_df = pd.DataFrame(
@@ -171,7 +188,7 @@ def disp_curr_bals():
     )
     st.dataframe(bals_df.set_index('Member'), use_container_width=True)
 
-    st.subheader("🤝 Suggested Settlements")
+    st.subheader("Suggested Settlements")
     setts = sug_setts(bals)
     if setts:
         for deb, cred, amt in setts:
@@ -180,7 +197,7 @@ def disp_curr_bals():
         st.success("All balances are currently settled!")
 
 def disp_exp_hist():
-    st.header("🧾 Expense History")
+    st.header("Expense History")
     if st.session_state.expenses:
         exps_data = [ ]
         for exp in st.session_state.expenses:
@@ -191,13 +208,14 @@ def disp_exp_hist():
                 'Description': exp.description,
                 'Amount': f"${exp.amount:.2f}",
                 'Paid By': exp.paid_by,
-                'Participants': ", ".join(exp.participants)
+                'Participants': ", ".join(exp.participants),
+                'Category': exp.category
             })
         df_exps = pd.DataFrame(exps_data)
         st.dataframe(df_exps.drop(columns=['Full ID']).set_index('ID'), use_container_width=True)
 
         st.markdown("---")
-        st.subheader("🗑️ Delete a Specific Expense")
+        st.subheader("Delete a Specific Expense")
         exp_id_to_del_display = st.text_input("Enter the (short) ID of the expense to delete:", key="del_exp_id_input")
         if st.button("Delete Expense"):
             full_id_to_delete = None
@@ -227,7 +245,7 @@ def disp_exp_hist():
         st.info("No expenses recorded yet. Use the form above to add one!")
 
 def disp_vis_sum():
-    st.header("📈 Visual Summary of Expenses")
+    st.header("Visual Summary of Expenses")
 
     if not st.session_state.expenses:
         st.info("Add some expenses to see the visualizations here!")
@@ -237,12 +255,12 @@ def disp_vis_sum():
 
     with col1:
         total_spent = sum(exp.amount for exp in st.session_state.expenses)
-        st.metric(label="💰 Total Household Spending", value=f"${total_spent:.2f}")
+        st.metric(label="Total Household Spending", value=f"${total_spent:.2f}")
 
     with col2:
         exp_df = pd.DataFrame([exp.to_dict() for exp in st.session_state.expenses])
         
-        st.expander("💸 Spending by Payer", expanded=True)
+        st.expander("Spending by Payer", expanded=True)
         payer_spending = exp_df.groupby('paid_by')['amount'].sum().reset_index()
         payer_spending.columns = ['Payer', 'Amount Paid']
         fig_payer = px.pie(payer_spending, values='Amount Paid', names='Payer',
@@ -250,6 +268,17 @@ def disp_vis_sum():
                            color_discrete_sequence=px.colors.sequential.RdBu)
         fig_payer.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig_payer, use_container_width=True)
+    
+    st.markdown("---")
+    st.subheader("Spending by Category")
+    st.expander("Category Breakdown", expanded=True)
+    category_spending = exp_df.groupby('category')['amount'].sum().reset_index()
+    category_spending.columns = ['Category', 'Amount']
+    fig_category = px.bar(category_spending, x='Category', y='Amount',
+                          title='Spending Per Category',
+                          color='Amount',
+                          color_continuous_scale='Viridis')
+    st.plotly_chart(fig_category, use_container_width=True)
 
     st.markdown("---")
     st.subheader("Individual Balance Overview")
@@ -257,16 +286,16 @@ def disp_vis_sum():
     bals = calc_bals(st.session_state.members, st.session_state.expenses)
     bals_df = pd.DataFrame(list(bals.items()), columns=['Member', 'Balance'])
 
-    st.expander("⚖️ Net Balances", expanded=False)
+    st.expander("Net Balances", expanded=False)
     fig_bals = px.bar(bals_df, x='Member', y='Balance',
                       color='Balance',
-                      color_continuous_scale='RdYlGn', # Corrected: Changed to string 'RdYlGn'
+                      color_continuous_scale='RdYlGn',
                       title='Net Balance Per Member')
     fig_bals.update_layout(showlegend=False)
     st.plotly_chart(fig_bals, use_container_width=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.expander("🗓️ Spending Trend Over Time")
+    st.expander("Spending Trend Over Time")
     
     exp_df['date'] = pd.to_datetime(exp_df['date'])
     daily_spending = exp_df.groupby('date')['amount'].sum().reset_index()
@@ -278,7 +307,7 @@ def disp_vis_sum():
     st.plotly_chart(fig_trend, use_container_width=True)
 
 def main():
-    st.title("🏡 Simple Household Splitter(No More Cheating... You pay what you truly owe💵💵💵)")
+    st.title("Simple Household Splitter(No More Cheating... You pay what you truly owe💵💵💵)")
 
     if 'data_loaded_flag' not in st.session_state:
         ld_dat()
