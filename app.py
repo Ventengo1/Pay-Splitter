@@ -548,33 +548,16 @@ def disp_exp_hist():
             })
         df_export = pd.DataFrame(export_data)
 
-        # Export buttons (now styled to be small and inline)
-        col_buttons = st.columns(2) # Create two columns for the buttons
-        with col_buttons[0]:
-            st.download_button(
-                label="**Export to CSV**", # Bold label for emphasis
-                data=df_export.to_csv(index=False).encode('utf-8'),
-                file_name="household_expenses.csv",
-                mime="text/csv",
-                help="Download all recorded expenses in CSV format."
-            )
-        with col_buttons[1]:
-            try:
-                output = BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    df_export.to_excel(writer, index=False, sheet_name='Expenses')
-                output.seek(0)
-                st.download_button(
-                    label="**Export to Excel**", # Bold label for emphasis
-                    data=output.read(),
-                    file_name="household_expenses.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    help="Download all recorded expenses in Excel (.xlsx) format."
-                )
-            except ImportError:
-                st.warning("Install `openpyxl` (`pip install openpyxl`) to enable Excel export.")
+        # Export CSV button
+        st.download_button(
+            label="**Export Data to CSV**", # Bold label for emphasis
+            data=df_export.to_csv(index=False).encode('utf-8'),
+            file_name="household_expenses.csv",
+            mime="text/csv",
+            help="Download all recorded expenses in CSV format."
+        )
 
-        st.markdown("---") # Add a separator after the buttons
+        st.markdown("---") # Add a separator after the button
 
         exps_data = []
         for exp in st.session_state.expenses:
