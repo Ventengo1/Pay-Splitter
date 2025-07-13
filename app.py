@@ -11,7 +11,7 @@ DATA_FILE = "household_data.json"
 
 # --- Streamlit Page Configuration for Visual Appeal ---
 st.set_page_config(
-    page_title="Household Splitter",
+    page_title="DollaDivide",
     page_icon="💸",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -676,8 +676,8 @@ def disp_vis_sum():
     st.plotly_chart(fig_trend, use_container_width=True)
 
 def main():
-    st.title("🏡 Simple Household Splitter (No More Cheating... You pay what you truly owe💵💵💵)")
-    st.write("Welcome to your ultimate tool for managing shared household expenses! Easily track spending, calculate balances, and simplify settlements among housemates.")
+    st.title("DollaDivide (No More Paying for Others... You pay what you truly owe💵💵💵)")
+    st.write("Welcome to your ultimate tool for managing shared household/group expenses! Easily track spending, calculate balances, and simplify settlements among housemates.")
 
     # Only load data from file if not already loaded in this session
     if not st.session_state.data_loaded_flag:
@@ -690,7 +690,7 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.header("About This App")
     st.sidebar.info(
-        "This application helps households fairly split expenses. "
+        "This application helps households and groups of people fairly split expenses. "
         "Add members, log expenses, and instantly see who owes whom. "
         "The visual summary provides insights into spending habits."
     )
