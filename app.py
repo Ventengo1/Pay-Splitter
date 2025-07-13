@@ -534,39 +534,38 @@ def disp_exp_hist():
     st.write("Review all past expenses. You can also delete specific entries or clear the entire history if you want to start fresh.")
 
     if st.session_state.expenses:
-        # Prepare data for export, excluding 'Full ID' for cleaner export
+        # Prepare data for export
         export_data = []
         for exp in st.session_state.expenses:
             export_data.append({
                 'Date': exp.date,
                 'Description': exp.description,
-                'Amount': exp.amount, # Use float for calculations in external tools
+                'Amount': exp.amount,
                 'Paid By': exp.paid_by,
                 'Participants': ", ".join(exp.participants),
                 'Category': exp.category,
-                'ID': exp.id # Include full ID for reference
+                'ID': exp.id
             })
         df_export = pd.DataFrame(export_data)
 
-        # Export buttons moved here!
-        st.subheader("Export Expenses")
-        col_csv, col_excel = st.columns(2)
-        with col_csv:
+        # Export buttons (now styled to be small and inline)
+        col_buttons = st.columns(2) # Create two columns for the buttons
+        with col_buttons[0]:
             st.download_button(
-                label="Download as CSV",
+                label="**Export to CSV**", # Bold label for emphasis
                 data=df_export.to_csv(index=False).encode('utf-8'),
                 file_name="household_expenses.csv",
                 mime="text/csv",
                 help="Download all recorded expenses in CSV format."
             )
-        with col_excel:
+        with col_buttons[1]:
             try:
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     df_export.to_excel(writer, index=False, sheet_name='Expenses')
-                output.seek(0) # Rewind the buffer
+                output.seek(0)
                 st.download_button(
-                    label="Download as Excel (xlsx)",
+                    label="**Export to Excel**", # Bold label for emphasis
                     data=output.read(),
                     file_name="household_expenses.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -575,6 +574,7 @@ def disp_exp_hist():
             except ImportError:
                 st.warning("Install `openpyxl` (`pip install openpyxl`) to enable Excel export.")
 
+        st.markdown("---") # Add a separator after the buttons
 
         exps_data = []
         for exp in st.session_state.expenses:
@@ -620,8 +620,6 @@ def disp_exp_hist():
 
     else:
         st.info("No expenses recorded yet. Use the form above to add one.")
-
-# The disp_export_data function is now removed as its content is merged into disp_exp_hist.
 
 def disp_vis_sum():
     st.header("Visual Summary of Expenses")
@@ -731,8 +729,6 @@ def main():
         st.markdown("---")
         disp_exp_hist()
         
-        # disp_export_data() # This call is now removed as the content is moved
-
     elif page_sel == "Visual Summary":
         disp_vis_sum()
 
