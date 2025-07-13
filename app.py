@@ -289,6 +289,8 @@ def sug_setts(bals):
 
 def disp_mems():
     st.header("Manage Members")
+    st.write("Easily add, remove, or update the members of your household here. Keeping this list accurate ensures fair splitting!")
+    st.image("https://via.placeholder.com/600x200?text=Household+Members+Image", caption="Organize your household members", use_column_width=True)
     
     col_input, col_button = st.columns([3, 1])
     with col_input:
@@ -298,7 +300,6 @@ def disp_mems():
             height=100
         )
     with col_button:
-        # Add some space above the button to align it better if text_area is taller
         st.markdown("<br><br><br>", unsafe_allow_html=True) # Adjust spacing
         if st.button("Update Members"):
             new_mems = [name.strip() for name in curr_mems_input.split('\n') if name.strip()]
@@ -309,6 +310,9 @@ def disp_mems():
 
 def disp_add_exp():
     st.header("➕ Add New Expense")
+    st.write("Log new expenses quickly and accurately. Specify who paid, who shared the cost, and categorize it for better tracking.")
+    st.image("https://via.placeholder.com/600x200?text=Add+Expense+Image", caption="Record your latest spending", use_column_width=True)
+
     with st.form("add_expense_form", clear_on_submit=True):
         desc = st.text_input("Description")
         amt = st.number_input("Amount ($)", min_value=0.01, format="%.2f")
@@ -346,6 +350,9 @@ def disp_add_exp():
 
 def disp_curr_bals():
     st.header("Current Balances")
+    st.write("See who owes what to whom. This section provides a real-time overview of current financial standings among members.")
+    st.image("https://via.placeholder.com/600x200?text=Balances+Overview+Image", caption="Track outstanding payments", use_column_width=True)
+
     bals = calc_bals(st.session_state.members, st.session_state.expenses)
 
     st.dataframe(pd.DataFrame(
@@ -362,6 +369,9 @@ def disp_curr_bals():
 
 def disp_exp_hist():
     st.header("Expense History")
+    st.write("Review all past expenses. You can also delete specific entries or clear the entire history if you want to start fresh.")
+    st.image("https://via.placeholder.com/600x200?text=Expense+History+Image", caption="Review past transactions", use_column_width=True)
+
     if st.session_state.expenses:
         exps_data = []
         for exp in st.session_state.expenses:
@@ -410,6 +420,7 @@ def disp_exp_hist():
 
 def disp_vis_sum():
     st.header("Visual Summary of Expenses")
+    st.write("Dive into your spending habits with insightful charts. Understand who pays what, where your money goes, and how spending trends over time.")
 
     if not st.session_state.expenses:
         st.info("Add some expenses to see the visualizations here!")
@@ -420,11 +431,13 @@ def disp_vis_sum():
     with col1:
         total_spent = sum(exp.amount for exp in st.session_state.expenses)
         st.metric(label="Total Household Spending", value=f"${total_spent:.2f}")
+        st.image("https://via.placeholder.com/300x150?text=Total+Spending+Icon", caption="Total expenses recorded", use_column_width=True)
 
     with col2:
         exp_df = pd.DataFrame([exp.to_dict() for exp in st.session_state.expenses])
         
         st.expander("Spending by Payer", expanded=True)
+        st.write("This pie chart illustrates the proportion of expenses paid by each member, giving you an immediate sense of financial contributions.")
         payer_spending = exp_df.groupby('paid_by')['amount'].sum().reset_index()
         payer_spending.columns = ['Payer', 'Amount Paid']
         fig_payer = px.pie(payer_spending, values='Amount Paid', names='Payer',
@@ -437,6 +450,7 @@ def disp_vis_sum():
     st.markdown("---")
     st.subheader("Spending by Category")
     st.expander("Category Breakdown", expanded=True)
+    st.write("Understand where your household spending is concentrated. This bar chart breaks down expenses by category.")
     category_spending = exp_df.groupby('category')['amount'].sum().reset_index()
     category_spending.columns = ['Category', 'Amount']
     fig_category = px.bar(category_spending, x='Category', y='Amount',
@@ -453,6 +467,7 @@ def disp_vis_sum():
     bals_df = pd.DataFrame(list(bals.items()), columns=['Member', 'Balance'])
 
     st.expander("Net Balances", expanded=False)
+    st.write("This chart visualizes the net balance for each member. Positive bars indicate money owed to them, while negative bars show what they owe.")
     fig_bals = px.bar(bals_df, x='Member', y='Balance',
                       color='Balance',
                       color_continuous_scale='RdYlGn',
@@ -463,6 +478,7 @@ def disp_vis_sum():
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.expander("Spending Trend Over Time")
+    st.write("Track your household's spending patterns over time to identify trends or peak spending periods.")
     
     exp_df['date'] = pd.to_datetime(exp_df['date'])
     daily_spending = exp_df.groupby('date')['amount'].sum().reset_index()
@@ -475,7 +491,8 @@ def disp_vis_sum():
     st.plotly_chart(fig_trend, use_container_width=True)
 
 def main():
-    st.title("🏡 Simple Household Splitter(No More Cheating... You pay what you truly owe💵💵💵)")
+    st.title("🏡 Simple Household Splitter (No More Cheating... You pay what you truly owe💵💵💵)")
+    st.write("Welcome to your ultimate tool for managing shared household expenses! Easily track spending, calculate balances, and simplify settlements among housemates.")
 
     if 'data_loaded_flag' not in st.session_state:
         ld_dat()
@@ -483,6 +500,16 @@ def main():
 
     st.sidebar.header("Navigation")
     page_sel = st.sidebar.radio("Go To", ["Home", "Visual Summary"])
+
+    st.sidebar.markdown("---")
+    st.sidebar.header("About This App")
+    st.sidebar.info(
+        "This application helps households fairly split expenses. "
+        "Add members, log expenses, and instantly see who owes whom. "
+        "The visual summary provides insights into spending habits."
+    )
+    st.sidebar.image("https://via.placeholder.com/250x150?text=App+Info+Image", caption="Organize your finances effortlessly", use_column_width=True)
+
 
     st.markdown("---")
 
