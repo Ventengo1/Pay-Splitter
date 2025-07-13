@@ -5,6 +5,7 @@ import uuid
 import json
 import os
 import plotly.express as px
+from io import BytesIO # <--- ADDED THIS IMPORT
 
 DATA_FILE = "household_data.json"
 
@@ -453,24 +454,23 @@ def disp_recurring_exp_manager():
         st.info("Click this button to add current recurring expenses to your main expense history. It will only add expenses not generated recently (within the last 30 days for simplicity).")
         if st.button("Generate Recurring Expenses Now"):
             generated_count = 0
-            current_date = date.today().strftime('%Y-%m-%d')
+            current_date_str = date.today().strftime('%Y-%m-%d')
             for rec_exp in st.session_state.recurring_expenses:
-                # Basic check to avoid re-generating the same expense too frequently
-                # A more robust system would track the last_generated date more precisely
                 already_generated_recently = False
                 for existing_exp in st.session_state.expenses:
+                    # Check for similar expense added within the last 30 days
                     if (existing_exp.description == rec_exp.description and
                         existing_exp.amount == rec_exp.amount and
                         existing_exp.paid_by == rec_exp.paid_by and
                         existing_exp.category == rec_exp.category and
-                        (datetime.strptime(current_date, '%Y-%m-%d').date() - datetime.strptime(existing_exp.date, '%Y-%m-%d').date()).days < 30):
+                        (datetime.strptime(current_date_str, '%Y-%m-%d').date() - datetime.strptime(existing_exp.date, '%Y-%m-%d').date()).days < 30):
                         already_generated_recently = True
                         break
 
                 if not already_generated_recently:
                     new_exp = Exp(rec_exp.description, rec_exp.amount, rec_exp.paid_by, rec_exp.participants, datetime.now().date(), rec_exp.category)
                     st.session_state.expenses.append(new_exp)
-                    rec_exp.last_generated = current_date # Update last generated date
+                    rec_exp.last_generated = current_date_str # Update last generated date
                     generated_count += 1
 
             sv_dat(st.session_state.members, st.session_state.expenses, st.session_state.recurring_expenses)
@@ -601,7 +601,7 @@ def disp_export_data():
 
         # To export as Excel, you need to have openpyxl installed: pip install openpyxl
         try:
-            from io import BytesIO
+            # from io import BytesIO # Moved to top of file
             output = BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df_export.to_excel(writer, index=False, sheet_name='Expenses')
@@ -717,7 +717,7 @@ def main():
         disp_add_exp()
 
         st.markdown("---")
-        disp_recurring_exp_manager() # New section for recurring expenses
+        disp_recurring_exp_manager() # <--- CALLING THE NEW RECURRING EXPENSE FUNCTION HERE
 
         st.markdown("---")
         disp_curr_bals()
@@ -726,7 +726,7 @@ def main():
         disp_exp_hist()
         
         st.markdown("---")
-        disp_export_data() # New section for export data
+        disp_export_data() # <--- CALLING THE NEW EXPORT DATA FUNCTION HERE
 
     elif page_sel == "Visual Summary":
         disp_vis_sum()
