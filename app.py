@@ -439,7 +439,7 @@ def disp_recurring_exp_manager():
                 st.rerun()
 
     st.markdown("---")
-    st.subheader("Defined Recurring Expenses")
+    st.subheader("Recurring Expenses")
     if st.session_state.recurring_expenses:
         rec_exps_data = []
         for rec_exp in st.session_state.recurring_expenses:
