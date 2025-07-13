@@ -76,6 +76,11 @@ def ld_dat():
             st.session_state.expenses = [
                 Exp.from_dict(exp_dict) for exp_dict in data_loaded.get("expenses", [])
             ]
+        
+        for exp in st.session_state.expenses:
+            if not hasattr(exp, 'category'):
+                exp.category = 'Uncategorized'
+
         st.sidebar.success("Data loaded!")
     else:
         st.session_state.members = ['Alice', 'Bob', 'Charlie', 'Tim']
@@ -307,7 +312,7 @@ def disp_vis_sum():
     st.plotly_chart(fig_trend, use_container_width=True)
 
 def main():
-    st.title("Simple Household Splitter(No More Cheating... You pay what you truly owe💵💵💵)")
+    st.title("🏡 Simple Household Splitter(No More Cheating... You pay what you truly owe💵💵💵)")
 
     if 'data_loaded_flag' not in st.session_state:
         ld_dat()
