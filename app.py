@@ -361,7 +361,7 @@ def disp_mems():
 def disp_add_exp():
     st.header("➕ Add New Expense")
     st.write("Log new expenses quickly and accurately. Specify who paid, who shared the cost, and categorize it for better tracking.")
-    st.caption="Record your latest spending with ease", use_container_width =True)
+    st.caption("Record your latest spending with ease")
 
     with st.form("add_expense_form", clear_on_submit=True):
         desc = st.text_input("Description")
