@@ -4,11 +4,10 @@ from datetime import datetime, date
 import uuid
 import json
 import os
+import plotly.express as px
 
- # --- Config ---
 DATA_FILE = "household_data.json"
 
-# --- Data Model ---
 class Exp:
     def __init__(self, desc, amt, pd_by, parts, dt_obj):
         self.id = str(uuid.uuid4())
@@ -17,13 +16,12 @@ class Exp:
         self.paid_by = pd_by
         self.participants = parts
 
-        # Simplified date handling - expects correct input or will error
         if isinstance(dt_obj, (datetime, date)):
             self.date = dt_obj.strftime('%Y-%m-%d')
         elif isinstance(dt_obj, str):
             self.date = dt_obj
         else:
-            raise TypeError("Unsupported date type encountered!") 
+            raise TypeError("Unsupported date type encountered!")
 
     def to_dict(self):
         return {
@@ -45,20 +43,17 @@ class Exp:
             data['date']
         )
 
-# --- Data Persistence ---
 def sv_dat(mems, exps):
     data_to_save = {
         "members": mems,
         "expenses": [exp.to_dict() for exp in exps]
     }
-   
     with open(DATA_FILE, "w") as f:
         json.dump(data_to_save, f, indent=4)
     st.sidebar.success("Data saved!")
 
 def ld_dat():
     if os.path.exists(DATA_FILE):
-        
         with open(DATA_FILE, "r") as f:
             data_loaded = json.load(f)
             st.session_state.members = data_loaded.get("members", ['Alice', 'Bob', 'Charlie'])
@@ -70,7 +65,6 @@ def ld_dat():
         st.session_state.members = ['Alice', 'Bob', 'Charlie', 'Tim']
         st.session_state.expenses = []
 
-# --- Core Logic ---
 def calc_bals(mems, exps):
     bals = {mem: 0.0 for mem in mems}
 
@@ -121,10 +115,8 @@ def sug_setts(bals):
     setts = [(d, c, amt) for d, c, amt in setts if amt > 0.01]
     return setts
 
-# --- UI Components ---
-
 def disp_mems():
-    st.header("Manage Members")
+    st.header("👨‍👩‍👧‍👦 Manage Members")
     curr_mems_input = st.text_area(
         "Edit Members (one name per line)",
         value="\n".join(st.session_state.members),
@@ -161,7 +153,6 @@ def disp_add_exp():
         sub = st.form_submit_button("Add Expense")
 
         if sub:
-           
             if not desc or pd_by is None or not parts:
                 st.error("Please fill in all fields (description, who paid, and who is involved).")
             else:
@@ -172,7 +163,7 @@ def disp_add_exp():
                 st.rerun()
 
 def disp_curr_bals():
-    st.header("Current Balances")
+    st.header("📊 Current Balances")
     bals = calc_bals(st.session_state.members, st.session_state.expenses)
 
     bals_df = pd.DataFrame(
@@ -189,13 +180,13 @@ def disp_curr_bals():
         st.success("All balances are currently settled!")
 
 def disp_exp_hist():
-    st.header("Expense History")
+    st.header("🧾 Expense History")
     if st.session_state.expenses:
         exps_data = [ ]
         for exp in st.session_state.expenses:
             exps_data.append({
-                'ID': exp.id[:8] + '...', # Shortened ID for display
-                'Full ID': exp.id, # Full ID for deletion reference
+                'ID': exp.id[:8] + '...',
+                'Full ID': exp.id,
                 'Date': exp.date,
                 'Description': exp.description,
                 'Amount': f"${exp.amount:.2f}",
@@ -203,15 +194,12 @@ def disp_exp_hist():
                 'Participants': ", ".join(exp.participants)
             })
         df_exps = pd.DataFrame(exps_data)
-        # Display the main table without the "Full ID" column directly
         st.dataframe(df_exps.drop(columns=['Full ID']).set_index('ID'), use_container_width=True)
 
         st.markdown("---")
-        # New feature: Delete single expense
-        st.subheader("Delete a Specific Expense")
+        st.subheader("🗑️ Delete a Specific Expense")
         exp_id_to_del_display = st.text_input("Enter the (short) ID of the expense to delete:", key="del_exp_id_input")
         if st.button("Delete Expense"):
-            # Find the full ID from the shortened display ID
             full_id_to_delete = None
             for row in exps_data:
                 if row['ID'] == exp_id_to_del_display:
@@ -219,7 +207,6 @@ def disp_exp_hist():
                     break
 
             if full_id_to_delete:
-                # Filter out the expense to delete
                 st.session_state.expenses = [
                     exp for exp in st.session_state.expenses if exp.id != full_id_to_delete
                 ]
@@ -229,7 +216,6 @@ def disp_exp_hist():
             else:
                 st.error("Expense ID not found. Please enter a valid shortened ID from the list.")
 
-        # Existing button to clear all
         st.markdown("---")
         if st.button("Clear All Expenses (Start Fresh)"):
             st.session_state.expenses = []
@@ -240,27 +226,82 @@ def disp_exp_hist():
     else:
         st.info("No expenses recorded yet. Use the form above to add one!")
 
-# --- Main App ---
-def main():
-    st.title("Simple Household Splitter(No More Cheating... You pay what you truly owe💵💵💵)")
+def disp_vis_sum():
+    st.header("📈 Visual Summary of Expenses")
 
-    # Initial data load check
+    if not st.session_state.expenses:
+        st.info("Add some expenses to see the visualizations here!")
+        return
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        total_spent = sum(exp.amount for exp in st.session_state.expenses)
+        st.metric(label="💰 Total Household Spending", value=f"${total_spent:.2f}")
+
+    with col2:
+        exp_df = pd.DataFrame([exp.to_dict() for exp in st.session_state.expenses])
+        
+        st.expander("💸 Spending by Payer", expanded=True) .
+        payer_spending = exp_df.groupby('paid_by')['amount'].sum().reset_index()
+        payer_spending.columns = ['Payer', 'Amount Paid']
+        fig_payer = px.pie(payer_spending, values='Amount Paid', names='Payer',
+                           title='Who Paid What?', hole=0.3,
+                           color_discrete_sequence=px.colors.sequential.RdBu)
+        fig_payer.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(fig_payer, use_container_width=True)
+
+    st.markdown("---")
+    st.subheader("Individual Balance Overview")
+
+    bals = calc_bals(st.session_state.members, st.session_state.expenses)
+    bals_df = pd.DataFrame(list(bals.items()), columns=['Member', 'Balance'])
+
+    st.expander("⚖️ Net Balances", expanded=False)
+    fig_bals = px.bar(bals_df, x='Member', y='Balance',
+                      color='Balance',
+                      color_continuous_scale=px.colors.sequential.RdYlGn,
+                      title='Net Balance Per Member')
+    fig_bals.update_layout(showlegend=False)
+    st.plotly_chart(fig_bals, use_container_width=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.expander("🗓️ Spending Trend Over Time")
+    
+    exp_df['date'] = pd.to_datetime(exp_df['date'])
+    daily_spending = exp_df.groupby('date')['amount'].sum().reset_index()
+    daily_spending = daily_spending.sort_values('date')
+
+    fig_trend = px.line(daily_spending, x='date', y='amount',
+                        title='Daily Spending Trend',
+                        labels={'date': 'Date', 'amount': 'Amount ($)'})
+    st.plotly_chart(fig_trend, use_container_width=True)
+
+def main():
+    st.title("🏡 Simple Household Splitter(No More Cheating... You pay what you truly owe💵💵💵)")
+
     if 'data_loaded_flag' not in st.session_state:
         ld_dat()
         st.session_state.data_loaded_flag = True
 
-    st.markdown("---")
-    disp_mems()
+    st.sidebar.header("Navigation")
+    page_sel = st.sidebar.radio("Go To", ["Home", "Visual Summary"])
 
     st.markdown("---")
-    disp_add_exp()
 
-    st.markdown("---")
-    disp_curr_bals()
+    if page_sel == "Home":
+        disp_mems()
 
-    st.markdown("---")
-    disp_exp_hist()
+        st.markdown("---")
+        disp_add_exp()
 
-# Run the code here
+        st.markdown("---")
+        disp_curr_bals()
+
+        st.markdown("---")
+        disp_exp_hist()
+    elif page_sel == "Visual Summary":
+        disp_vis_sum()
+
 if __name__ == "__main__":
     main()
