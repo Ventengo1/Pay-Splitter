@@ -169,7 +169,7 @@ DEFAULT_CATEGORIES = [
     "Shopping",
     "Health",
     "Education/School",
-    "Miscellaneous"
+    "Miscellaneous/other"
 ]
 
 class Exp:
@@ -223,7 +223,7 @@ def ld_dat():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             data_loaded = json.load(f)
-            st.session_state.members = data_loaded.get("members", ['Alice', 'Bob', 'Charlie'])
+            st.session_state.members = data_loaded.get("members", ['Alice', 'Bob', 'Charlie', 'Tim'])
             st.session_state.expenses = [
                 Exp.from_dict(exp_dict) for exp_dict in data_loaded.get("expenses", [])
             ]
@@ -289,7 +289,7 @@ def sug_setts(bals):
 
 def disp_mems():
     st.header("Manage Members")
-    st.write("Easily add, remove, or update the members of your household here. Keeping this list accurate ensures fair splitting!")
+    st.write("Easily add, remove, or update the members of your household/group here. Keeping this list accurate ensures fair splitting!")
    
     
     col_input, col_button = st.columns([3, 1])
@@ -332,7 +332,7 @@ def disp_add_exp():
                     key="participants_multiselect"
                 )
         else:
-            st.warning("Please add members first in the 'Manage Members' section to add expenses.")
+            st.warning("Add members first in the 'Manage Members' section to add expenses.")
 
         exp_dt = st.date_input("Date", value=datetime.now().date(), key="expense_date_input")
 
@@ -350,7 +350,7 @@ def disp_add_exp():
 
 def disp_curr_bals():
     st.header("Current Balances")
-    st.write("See who owes what to whom. This section provides a real-time overview of current financial standings among members.")
+    st.write("See who owes what to whom. This section provides a real-time overview of how much each person owes other members.")
 
     bals = calc_bals(st.session_state.members, st.session_state.expenses)
 
@@ -368,7 +368,7 @@ def disp_curr_bals():
 
 def disp_exp_hist():
     st.header("Expense History")
-    st.write("Review all past expenses. You can also delete specific entries or clear the entire history if you want to start fresh.")
+    st.write("Review all past expenses. You can also delete specific entries or clear the entire history if you wanna to start fresh.")
 
 
     if st.session_state.expenses:
@@ -415,11 +415,11 @@ def disp_exp_hist():
             st.rerun()
 
     else:
-        st.info("No expenses recorded yet. Use the form above to add one!")
+        st.info("No expenses recorded yet. Use the form above to add one")
 
 def disp_vis_sum():
     st.header("Visual Summary of Expenses")
-    st.write("Dive into your spending habits with insightful charts. Understand who pays what, where your money goes, and how spending trends over time.")
+    st.write("understand your spending habits with these charts. Understand who pays what, where your money goes, and how spending trends over time.")
 
     if not st.session_state.expenses:
         st.info("Add some expenses to see the visualizations here!")
@@ -435,7 +435,7 @@ def disp_vis_sum():
         exp_df = pd.DataFrame([exp.to_dict() for exp in st.session_state.expenses])
         
         st.expander("Spending by Payer", expanded=True)
-        st.write("This pie chart illustrates the proportion of expenses paid by each member, giving you an immediate sense of financial contributions.")
+        st.write("This pie chart illustrates the proportion of expenses paid by each member, giving you a sense of financial contributions.")
         payer_spending = exp_df.groupby('paid_by')['amount'].sum().reset_index()
         payer_spending.columns = ['Payer', 'Amount Paid']
         fig_payer = px.pie(payer_spending, values='Amount Paid', names='Payer',
