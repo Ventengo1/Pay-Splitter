@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import uuid
 import json
 import os
@@ -11,8 +11,8 @@ DATA_FILE = "household_data.json"
 # --- Streamlit Page Configuration for Visual Appeal ---
 st.set_page_config(
     page_title="Household Splitter",
-    page_icon="💸", # Keeping existing emoji for the tab icon
-    layout="wide", # Use wide layout for more space
+    page_icon="💸",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
@@ -21,11 +21,11 @@ st.markdown(
     """
     <style>
     /* Main container background and text color */
-    .st-emotion-cache-z5fcl4 { /* Target the main content area */
+    .st-emotion-cache-z5fcl4 {
         background-color: #1e1e1e;
         color: #f0f2f6;
     }
-    .st-emotion-cache-1cyp85f { /* Target inner content background for wide layout */
+    .st-emotion-cache-1cyp85f {
         background-color: #1e1e1e;
     }
 
@@ -37,23 +37,22 @@ st.markdown(
         background-color: #2b2b2b;
     }
 
-
     /* Headers */
     h1, h2, h3, h4, h5, h6 {
-        color: #64ffda; /* Vibrant accent color for headers */
+        color: #64ffda;
     }
 
     /* Buttons */
     .stButton>button {
-        color: #64ffda; /* Accent color for button text */
-        background-color: #3a3a3a; /* Dark button background */
+        color: #64ffda;
+        background-color: #3a3a3a;
         border-radius: 5px;
-        border: 1px solid #64ffda; /* Accent border */
+        border: 1px solid #64ffda;
         padding: 0.6rem 1.2rem;
     }
     .stButton>button:hover {
-        background-color: #64ffda; /* Accent background on hover */
-        color: #1e1e1e; /* Dark text on hover */
+        background-color: #64ffda;
+        color: #1e1e1e;
         border: 1px solid #64ffda;
     }
 
@@ -61,12 +60,12 @@ st.markdown(
     .stDataFrame {
         border-radius: 10px;
         overflow: hidden;
-        border: 1px solid #4a4a4a; /* Subtle border for dataframes */
+        border: 1px solid #4a4a4a;
     }
 
     /* Metrics */
     .stMetric {
-        background-color: #2b2b2b; /* Darker background for metrics */
+        background-color: #2b2b2b;
         padding: 20px;
         border-radius: 10px;
         border: 1px solid #4a4a4a;
@@ -74,36 +73,36 @@ st.markdown(
     }
     /* Make metric labels and values more readable */
     .stMetric label {
-        color: #f0f2f6; /* Light text for labels */
+        color: #f0f2f6;
         font-size: 1rem;
     }
     .stMetric div[data-testid="stMetricValue"] {
-        color: #64ffda; /* Accent color for metric values */
+        color: #64ffda;
         font-size: 2.5rem;
         font-weight: bold;
     }
     .stMetric div[data-testid="stMetricDelta"] {
-        color: #f0f2f6; /* Ensure delta color is visible */
+        color: #f0f2f6;
     }
 
     /* Expander styling */
     .stExpander {
-        background-color: #2b2b2b; /* Darker background for expanders */
+        background-color: #2b2b2b;
         border-radius: 10px;
         border: 1px solid #4a4a4a;
         margin-bottom: 15px;
         padding: 10px;
     }
     .stExpander details summary p {
-        color: #f0f2f6; /* Text inside expander */
+        color: #f0f2f6;
     }
     .stExpander details summary {
-        color: #f0f2f6; /* Expander title */
+        color: #f0f2f6;
     }
 
     /* Input fields (text input, selectbox, date input, multiselect) */
-    .stTextInput>div>div>input, 
-    .stSelectbox>div>div>div>div>span, 
+    .stTextInput>div>div>input,
+    .stSelectbox>div>div>div>div>span,
     .stDateInput>div>div>input,
     .stMultiSelect>div>div>div>div {
         background-color: #3a3a3a;
@@ -148,7 +147,7 @@ st.markdown(
     }
 
     /* Adjust Streamlit specific elements for better dark theme compatibility */
-    .st-emotion-cache-10o5u_1 { /* Labels for widgets */
+    .st-emotion-cache-10o5u_1 {
         color: #f0f2f6;
     }
 
@@ -210,10 +209,48 @@ class Exp:
             data.get('category', 'Uncategorized')
         )
 
-def sv_dat(mems, exps):
+# New class for recurring expenses
+class RecurringExp:
+    def __init__(self, desc, amt, pd_by, parts, category, frequency):
+        self.id = str(uuid.uuid4())
+        self.description = desc
+        self.amount = float(amt)
+        self.paid_by = pd_by
+        self.participants = parts
+        self.category = category
+        self.frequency = frequency # e.g., "Monthly", "Weekly"
+        self.last_generated = None # To store the last date this recurring expense was generated
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "description": self.description,
+            "amount": self.amount,
+            "paid_by": self.paid_by,
+            "participants": self.participants,
+            "category": self.category,
+            "frequency": self.frequency,
+            "last_generated": self.last_generated
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        rec_exp = cls(
+            data['description'],
+            data['amount'],
+            data['paid_by'],
+            data['participants'],
+            data['category'],
+            data['frequency']
+        )
+        rec_exp.last_generated = data.get('last_generated')
+        return rec_exp
+
+def sv_dat(mems, exps, rec_exps):
     data_to_save = {
         "members": mems,
-        "expenses": [exp.to_dict() for exp in exps]
+        "expenses": [exp.to_dict() for exp in exps],
+        "recurring_expenses": [rec_exp.to_dict() for rec_exp in rec_exps]
     }
     with open(DATA_FILE, "w") as f:
         json.dump(data_to_save, f, indent=4)
@@ -227,15 +264,20 @@ def ld_dat():
             st.session_state.expenses = [
                 Exp.from_dict(exp_dict) for exp_dict in data_loaded.get("expenses", [])
             ]
-        
+            st.session_state.recurring_expenses = [
+                RecurringExp.from_dict(rec_exp_dict) for rec_exp_dict in data_loaded.get("recurring_expenses", [])
+            ]
+
+        # Ensure all expenses have a category
         for exp in st.session_state.expenses:
             if not hasattr(exp, 'category'):
                 exp.category = 'Uncategorized'
-
+        
         st.sidebar.success("Data loaded!")
     else:
         st.session_state.members = ['Alice', 'Bob', 'Charlie', 'Tim']
         st.session_state.expenses = []
+        st.session_state.recurring_expenses = []
 
 def calc_bals(mems, exps):
     bals = {mem: 0.0 for mem in mems}
@@ -290,7 +332,6 @@ def sug_setts(bals):
 def disp_mems():
     st.header("Manage Members")
     st.write("Easily add, remove, or update the members of your household/group here. Keeping this list accurate ensures fair splitting!")
-   
     
     col_input, col_button = st.columns([3, 1])
     with col_input:
@@ -300,11 +341,11 @@ def disp_mems():
             height=100
         )
     with col_button:
-        st.markdown("<br><br><br>", unsafe_allow_html=True) # Adjust spacing
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
         if st.button("Update Members"):
             new_mems = [name.strip() for name in curr_mems_input.split('\n') if name.strip()]
             st.session_state.members = new_mems
-            sv_dat(st.session_state.members, st.session_state.expenses)
+            sv_dat(st.session_state.members, st.session_state.expenses, st.session_state.recurring_expenses)
             st.success("Members updated!")
             st.rerun()
 
@@ -344,9 +385,123 @@ def disp_add_exp():
             else:
                 new_exp = Exp(desc, amt, pd_by, parts, exp_dt, category)
                 st.session_state.expenses.append(new_exp)
-                sv_dat(st.session_state.members, st.session_state.expenses)
+                sv_dat(st.session_state.members, st.session_state.expenses, st.session_state.recurring_expenses)
                 st.success("Expense added successfully!")
                 st.rerun()
+
+# New function for recurring expenses manager
+def disp_recurring_exp_manager():
+    st.header("🔄 Manage Recurring Expenses")
+    st.write("Define expenses that happen regularly (e.g., rent, subscriptions) and easily add them to your history.")
+
+    with st.form("add_recurring_expense_form", clear_on_submit=True):
+        rec_desc = st.text_input("Recurring Expense Description")
+        rec_amt = st.number_input("Recurring Amount ($)", min_value=0.01, format="%.2f")
+        rec_category = st.selectbox("Recurring Category", options=DEFAULT_CATEGORIES, key="rec_category_select")
+
+        rec_pd_by = None
+        rec_parts = []
+        if st.session_state.members:
+            col_rec_paidby, col_rec_participants = st.columns(2)
+            with col_rec_paidby:
+                rec_pd_by = st.selectbox("Who Usually Pays?", options=st.session_state.members, key="rec_paid_by_select")
+            with col_rec_participants:
+                rec_parts = st.multiselect(
+                    "Who is Usually Involved?",
+                    options=st.session_state.members,
+                    default=st.session_state.members,
+                    key="rec_participants_multiselect"
+                )
+        else:
+            st.warning("Add members first to define recurring expenses.")
+
+        rec_frequency = st.selectbox("Frequency", ["Monthly", "Weekly", "Annually"], key="rec_frequency_select")
+
+        sub_rec = st.form_submit_button("Add Recurring Expense Definition")
+
+        if sub_rec:
+            if not rec_desc or rec_pd_by is None or not rec_parts:
+                st.error("Please fill in all fields for the recurring expense definition.")
+            else:
+                new_rec_exp = RecurringExp(rec_desc, rec_amt, rec_pd_by, rec_parts, rec_category, rec_frequency)
+                st.session_state.recurring_expenses.append(new_rec_exp)
+                sv_dat(st.session_state.members, st.session_state.expenses, st.session_state.recurring_expenses)
+                st.success(f"Recurring expense '{rec_desc}' added!")
+                st.rerun()
+
+    st.markdown("---")
+    st.subheader("Defined Recurring Expenses")
+    if st.session_state.recurring_expenses:
+        rec_exps_data = []
+        for rec_exp in st.session_state.recurring_expenses:
+            rec_exps_data.append({
+                'ID': rec_exp.id[:8] + '...',
+                'Full ID': rec_exp.id,
+                'Description': rec_exp.description,
+                'Amount': f"${rec_exp.amount:.2f}",
+                'Paid By': rec_exp.paid_by,
+                'Participants': ", ".join(rec_exp.participants),
+                'Category': rec_exp.category,
+                'Frequency': rec_exp.frequency,
+                'Last Generated': rec_exp.last_generated if rec_exp.last_generated else 'Never'
+            })
+        df_rec_exps = pd.DataFrame(rec_exps_data)
+        st.dataframe(df_rec_exps.drop(columns=['Full ID']).set_index('ID'), use_container_width=True)
+
+        st.markdown("---")
+        st.subheader("Generate Recurring Expenses for Today")
+        st.info("Click this button to add current recurring expenses to your main expense history. It will only add expenses not generated recently (within the last 30 days for simplicity).")
+        if st.button("Generate Recurring Expenses Now"):
+            generated_count = 0
+            current_date = date.today().strftime('%Y-%m-%d')
+            for rec_exp in st.session_state.recurring_expenses:
+                # Basic check to avoid re-generating the same expense too frequently
+                # A more robust system would track the last_generated date more precisely
+                already_generated_recently = False
+                for existing_exp in st.session_state.expenses:
+                    if (existing_exp.description == rec_exp.description and
+                        existing_exp.amount == rec_exp.amount and
+                        existing_exp.paid_by == rec_exp.paid_by and
+                        existing_exp.category == rec_exp.category and
+                        (datetime.strptime(current_date, '%Y-%m-%d').date() - datetime.strptime(existing_exp.date, '%Y-%m-%d').date()).days < 30):
+                        already_generated_recently = True
+                        break
+
+                if not already_generated_recently:
+                    new_exp = Exp(rec_exp.description, rec_exp.amount, rec_exp.paid_by, rec_exp.participants, datetime.now().date(), rec_exp.category)
+                    st.session_state.expenses.append(new_exp)
+                    rec_exp.last_generated = current_date # Update last generated date
+                    generated_count += 1
+
+            sv_dat(st.session_state.members, st.session_state.expenses, st.session_state.recurring_expenses)
+            if generated_count > 0:
+                st.success(f"Successfully generated {generated_count} recurring expense(s)!")
+            else:
+                st.info("No new recurring expenses to generate at this time, or they've been generated recently.")
+            st.rerun()
+
+        st.markdown("---")
+        st.subheader("Delete a Specific Recurring Expense Definition")
+        rec_exp_id_to_del_display = st.text_input("Enter the (short) ID of the recurring expense to delete:", key="del_rec_exp_id_input")
+        if st.button("Delete Recurring Expense Definition"):
+            full_id_to_delete = None
+            for row in rec_exps_data:
+                if row['ID'] == rec_exp_id_to_del_display:
+                    full_id_to_delete = row['Full ID']
+                    break
+
+            if full_id_to_delete:
+                st.session_state.recurring_expenses = [
+                    rec_exp for rec_exp in st.session_state.recurring_expenses if rec_exp.id != full_id_to_delete
+                ]
+                sv_dat(st.session_state.members, st.session_state.expenses, st.session_state.recurring_expenses)
+                st.success(f"Recurring expense definition '{rec_exp_id_to_del_display}' deleted!")
+                st.rerun()
+            else:
+                st.error("Recurring Expense ID not found. Please enter a valid shortened ID from the list.")
+
+    else:
+        st.info("No recurring expenses defined yet. Use the form above to add one!")
 
 def disp_curr_bals():
     st.header("Current Balances")
@@ -368,8 +523,7 @@ def disp_curr_bals():
 
 def disp_exp_hist():
     st.header("Expense History")
-    st.write("Review all past expenses. You can also delete specific entries or clear the entire history if you wanna to start fresh.")
-
+    st.write("Review all past expenses. You can also delete specific entries or clear the entire history if you want to start fresh.")
 
     if st.session_state.expenses:
         exps_data = []
@@ -401,7 +555,7 @@ def disp_exp_hist():
                 st.session_state.expenses = [
                     exp for exp in st.session_state.expenses if exp.id != full_id_to_delete
                 ]
-                sv_dat(st.session_state.members, st.session_state.expenses)
+                sv_dat(st.session_state.members, st.session_state.expenses, st.session_state.recurring_expenses)
                 st.success(f"Expense '{exp_id_to_del_display}' deleted!")
                 st.rerun()
             else:
@@ -410,16 +564,63 @@ def disp_exp_hist():
         st.markdown("---")
         if st.button("Clear All Expenses (Start Fresh)"):
             st.session_state.expenses = []
-            sv_dat(st.session_state.members, st.session_state.expenses)
+            sv_dat(st.session_state.members, st.session_state.expenses, st.session_state.recurring_expenses)
             st.success("All expenses cleared!")
             st.rerun()
 
     else:
-        st.info("No expenses recorded yet. Use the form above to add one")
+        st.info("No expenses recorded yet. Use the form above to add one.")
+
+# New function for export data
+def disp_export_data():
+    st.header("📥 Export Your Data")
+    st.write("Download your complete expense history for safekeeping or further analysis.")
+
+    if st.session_state.expenses:
+        # Prepare data for export, excluding 'Full ID' for cleaner export
+        export_data = []
+        for exp in st.session_state.expenses:
+            export_data.append({
+                'Date': exp.date,
+                'Description': exp.description,
+                'Amount': exp.amount, # Use float for calculations in external tools
+                'Paid By': exp.paid_by,
+                'Participants': ", ".join(exp.participants),
+                'Category': exp.category,
+                'ID': exp.id # Include full ID for reference
+            })
+        df_export = pd.DataFrame(export_data)
+
+        st.download_button(
+            label="Download Expenses as CSV",
+            data=df_export.to_csv(index=False).encode('utf-8'),
+            file_name="household_expenses.csv",
+            mime="text/csv",
+            help="Download all recorded expenses in CSV format."
+        )
+
+        # To export as Excel, you need to have openpyxl installed: pip install openpyxl
+        try:
+            from io import BytesIO
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df_export.to_excel(writer, index=False, sheet_name='Expenses')
+            output.seek(0) # Rewind the buffer
+            st.download_button(
+                label="Download Expenses as Excel (xlsx)",
+                data=output.read(),
+                file_name="household_expenses.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                help="Download all recorded expenses in Excel (.xlsx) format."
+            )
+        except ImportError:
+            st.warning("Install `openpyxl` (`pip install openpyxl`) to enable Excel export.")
+    else:
+        st.info("No expenses to export yet.")
 
 def disp_vis_sum():
     st.header("Visual Summary of Expenses")
-    st.write("understand your spending habits with these charts. Understand who pays what, where your money goes, and how spending trends over time.")
+    st.write("Understand your spending habits with these charts. Understand who pays what, where your money goes, and how spending trends over time.")
 
     if not st.session_state.expenses:
         st.info("Add some expenses to see the visualizations here!")
@@ -441,7 +642,7 @@ def disp_vis_sum():
         fig_payer = px.pie(payer_spending, values='Amount Paid', names='Payer',
                            title='Who Paid What?', hole=0.3,
                            color_discrete_sequence=px.colors.sequential.RdBu,
-                           template='plotly_dark') # Apply dark theme to plot
+                           template='plotly_dark')
         fig_payer.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig_payer, use_container_width=True)
     
@@ -455,7 +656,7 @@ def disp_vis_sum():
                           title='Spending Per Category',
                           color='Amount',
                           color_continuous_scale='Viridis',
-                          template='plotly_dark') # Apply dark theme to plot
+                          template='plotly_dark')
     st.plotly_chart(fig_category, use_container_width=True)
 
     st.markdown("---")
@@ -470,7 +671,7 @@ def disp_vis_sum():
                       color='Balance',
                       color_continuous_scale='RdYlGn',
                       title='Net Balance Per Member',
-                      template='plotly_dark') # Apply dark theme to plot
+                      template='plotly_dark')
     fig_bals.update_layout(showlegend=False)
     st.plotly_chart(fig_bals, use_container_width=True)
 
@@ -485,7 +686,7 @@ def disp_vis_sum():
     fig_trend = px.line(daily_spending, x='date', y='amount',
                         title='Daily Spending Trend',
                         labels={'date': 'Date', 'amount': 'Amount ($)'},
-                        template='plotly_dark') # Apply dark theme to plot
+                        template='plotly_dark')
     st.plotly_chart(fig_trend, use_container_width=True)
 
 def main():
@@ -507,7 +708,6 @@ def main():
         "The visual summary provides insights into spending habits."
     )
 
-
     st.markdown("---")
 
     if page_sel == "Home":
@@ -517,10 +717,17 @@ def main():
         disp_add_exp()
 
         st.markdown("---")
+        disp_recurring_exp_manager() # New section for recurring expenses
+
+        st.markdown("---")
         disp_curr_bals()
 
         st.markdown("---")
         disp_exp_hist()
+        
+        st.markdown("---")
+        disp_export_data() # New section for export data
+
     elif page_sel == "Visual Summary":
         disp_vis_sum()
 
