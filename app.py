@@ -23,7 +23,7 @@ class Exp:
         elif isinstance(dt_obj, str):
             self.date = dt_obj
         else:
-            raise TypeError("Unsupported date type encountered!") # Less specific error message
+            raise TypeError("Unsupported date type encountered!") 
 
     def to_dict(self):
         return {
@@ -51,14 +51,14 @@ def sv_dat(mems, exps):
         "members": mems,
         "expenses": [exp.to_dict() for exp in exps]
     }
-    # No explicit try-except for file I/O for less "perfect" handling
+   
     with open(DATA_FILE, "w") as f:
         json.dump(data_to_save, f, indent=4)
     st.sidebar.success("Data saved!")
 
 def ld_dat():
     if os.path.exists(DATA_FILE):
-        # No explicit try-except for JSON decode/file access for less "perfect" handling
+        
         with open(DATA_FILE, "r") as f:
             data_loaded = json.load(f)
             st.session_state.members = data_loaded.get("members", ['Alice', 'Bob', 'Charlie'])
@@ -161,7 +161,7 @@ def disp_add_exp():
         sub = st.form_submit_button("Add Expense")
 
         if sub:
-            # Less strict error checks
+           
             if not desc or pd_by is None or not parts:
                 st.error("Please fill in all fields (description, who paid, and who is involved).")
             else:
