@@ -242,7 +242,7 @@ def disp_vis_sum():
     with col2:
         exp_df = pd.DataFrame([exp.to_dict() for exp in st.session_state.expenses])
         
-        st.expander("💸 Spending by Payer", expanded=True) .
+        st.expander("💸 Spending by Payer", expanded=True)
         payer_spending = exp_df.groupby('paid_by')['amount'].sum().reset_index()
         payer_spending.columns = ['Payer', 'Amount Paid']
         fig_payer = px.pie(payer_spending, values='Amount Paid', names='Payer',
