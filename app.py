@@ -8,6 +8,157 @@ import plotly.express as px
 
 DATA_FILE = "household_data.json"
 
+# --- Streamlit Page Configuration for Visual Appeal ---
+st.set_page_config(
+    page_title="Household Splitter",
+    page_icon="💸", # Keeping existing emoji for the tab icon
+    layout="wide", # Use wide layout for more space
+    initial_sidebar_state="expanded"
+)
+
+# --- Custom CSS for visual enhancements ---
+st.markdown(
+    """
+    <style>
+    /* Main container background and text color */
+    .st-emotion-cache-z5fcl4 { /* Target the main content area */
+        background-color: #1e1e1e;
+        color: #f0f2f6;
+    }
+    .st-emotion-cache-1cyp85f { /* Target inner content background for wide layout */
+        background-color: #1e1e1e;
+    }
+
+    /* Sidebar background */
+    [data-testid="stSidebar"] {
+        background-color: #2b2b2b;
+    }
+    [data-testid="stSidebarContent"] {
+        background-color: #2b2b2b;
+    }
+
+
+    /* Headers */
+    h1, h2, h3, h4, h5, h6 {
+        color: #64ffda; /* Vibrant accent color for headers */
+    }
+
+    /* Buttons */
+    .stButton>button {
+        color: #64ffda; /* Accent color for button text */
+        background-color: #3a3a3a; /* Dark button background */
+        border-radius: 5px;
+        border: 1px solid #64ffda; /* Accent border */
+        padding: 0.6rem 1.2rem;
+    }
+    .stButton>button:hover {
+        background-color: #64ffda; /* Accent background on hover */
+        color: #1e1e1e; /* Dark text on hover */
+        border: 1px solid #64ffda;
+    }
+
+    /* DataFrames */
+    .stDataFrame {
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #4a4a4a; /* Subtle border for dataframes */
+    }
+
+    /* Metrics */
+    .stMetric {
+        background-color: #2b2b2b; /* Darker background for metrics */
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #4a4a4a;
+        margin-bottom: 15px;
+    }
+    /* Make metric labels and values more readable */
+    .stMetric label {
+        color: #f0f2f6; /* Light text for labels */
+        font-size: 1rem;
+    }
+    .stMetric div[data-testid="stMetricValue"] {
+        color: #64ffda; /* Accent color for metric values */
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+    .stMetric div[data-testid="stMetricDelta"] {
+        color: #f0f2f6; /* Ensure delta color is visible */
+    }
+
+    /* Expander styling */
+    .stExpander {
+        background-color: #2b2b2b; /* Darker background for expanders */
+        border-radius: 10px;
+        border: 1px solid #4a4a4a;
+        margin-bottom: 15px;
+        padding: 10px;
+    }
+    .stExpander details summary p {
+        color: #f0f2f6; /* Text inside expander */
+    }
+    .stExpander details summary {
+        color: #f0f2f6; /* Expander title */
+    }
+
+    /* Input fields (text input, selectbox, date input, multiselect) */
+    .stTextInput>div>div>input, 
+    .stSelectbox>div>div>div>div>span, 
+    .stDateInput>div>div>input,
+    .stMultiSelect>div>div>div>div {
+        background-color: #3a3a3a;
+        color: #f0f2f6;
+        border: 1px solid #4a4a4a;
+        border-radius: 5px;
+        padding: 0.5rem 1rem;
+    }
+    /* Textarea */
+    .stTextArea>div>div>textarea {
+        background-color: #3a3a3a;
+        color: #f0f2f6;
+        border: 1px solid #4a4a4a;
+        border-radius: 5px;
+        padding: 0.5rem 1rem;
+    }
+
+    /* Info/Success/Warning alerts */
+    .stAlert {
+        border-radius: 8px;
+        padding: 10px 15px;
+    }
+    .stAlert.info {
+        background-color: #34495e;
+        color: #ecf0f1;
+        border-left: 5px solid #2980b9;
+    }
+    .stAlert.success {
+        background-color: #27ae60;
+        color: #ecf0f1;
+        border-left: 5px solid #2ecc71;
+    }
+    .stAlert.warning {
+        background-color: #f39c12;
+        color: #ecf0f1;
+        border-left: 5px solid #e67e22;
+    }
+    .stAlert.error {
+        background-color: #c0392b;
+        color: #ecf0f1;
+        border-left: 5px solid #e74c3c;
+    }
+
+    /* Adjust Streamlit specific elements for better dark theme compatibility */
+    .st-emotion-cache-10o5u_1 { /* Labels for widgets */
+        color: #f0f2f6;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+DATA_FILE = "household_data.json"
+
 DEFAULT_CATEGORIES = [
     "Groceries",
     "Utilities",
@@ -17,7 +168,7 @@ DEFAULT_CATEGORIES = [
     "Entertainment",
     "Shopping",
     "Health",
-    "Education",
+    "Education/School",
     "Miscellaneous"
 ]
 
@@ -108,7 +259,7 @@ def sug_setts(bals):
     debtors = {mem: abs(bal) for mem, bal in clean_bals.items() if bal < 0}
     creds = {mem: bal for mem, bal in clean_bals.items() if bal > 0}
 
-    setts = [ ]
+    setts = []
 
     sorted_debtors = sorted(debtors.items(), key=lambda item: item[1], reverse=True)
     sorted_creds = sorted(creds.items(), key=lambda item: item[1], reverse=True)
@@ -138,17 +289,23 @@ def sug_setts(bals):
 
 def disp_mems():
     st.header("Manage Members")
-    curr_mems_input = st.text_area(
-        "Edit Members (one name per line)",
-        value="\n".join(st.session_state.members),
-        height=100
-    )
-    if st.button("Update Members") :
-        new_mems = [name.strip() for name in curr_mems_input.split('\n') if name.strip()]
-        st.session_state.members = new_mems
-        sv_dat(st.session_state.members, st.session_state.expenses)
-        st.success("Members updated!")
-        st.rerun()
+    
+    col_input, col_button = st.columns([3, 1])
+    with col_input:
+        curr_mems_input = st.text_area(
+            "Edit Members (one name per line)",
+            value="\n".join(st.session_state.members),
+            height=100
+        )
+    with col_button:
+        # Add some space above the button to align it better if text_area is taller
+        st.markdown("<br><br><br>", unsafe_allow_html=True) # Adjust spacing
+        if st.button("Update Members"):
+            new_mems = [name.strip() for name in curr_mems_input.split('\n') if name.strip()]
+            st.session_state.members = new_mems
+            sv_dat(st.session_state.members, st.session_state.expenses)
+            st.success("Members updated!")
+            st.rerun()
 
 def disp_add_exp():
     st.header("➕ Add New Expense")
@@ -160,13 +317,16 @@ def disp_add_exp():
         pd_by = None
         parts = []
         if st.session_state.members:
-            pd_by = st.selectbox("Who Paid?", options=st.session_state.members, key="paid_by_select")
-            parts = st.multiselect(
-                "Who is involved in the split?",
-                options=st.session_state.members,
-                default=st.session_state.members,
-                key="participants_multiselect"
-            )
+            col_paidby, col_participants = st.columns(2)
+            with col_paidby:
+                pd_by = st.selectbox("Who Paid?", options=st.session_state.members, key="paid_by_select")
+            with col_participants:
+                parts = st.multiselect(
+                    "Who is involved in the split?",
+                    options=st.session_state.members,
+                    default=st.session_state.members,
+                    key="participants_multiselect"
+                )
         else:
             st.warning("Please add members first in the 'Manage Members' section to add expenses.")
 
@@ -188,10 +348,9 @@ def disp_curr_bals():
     st.header("Current Balances")
     bals = calc_bals(st.session_state.members, st.session_state.expenses)
 
-    bals_df = pd.DataFrame(
+    st.dataframe(pd.DataFrame(
         [{'Member': mem, 'Balance': f"${bal:.2f}"} for mem, bal in bals.items()]
-    )
-    st.dataframe(bals_df.set_index('Member'), use_container_width=True)
+    ).set_index('Member'), use_container_width=True)
 
     st.subheader("Suggested Settlements")
     setts = sug_setts(bals)
@@ -204,7 +363,7 @@ def disp_curr_bals():
 def disp_exp_hist():
     st.header("Expense History")
     if st.session_state.expenses:
-        exps_data = [ ]
+        exps_data = []
         for exp in st.session_state.expenses:
             exps_data.append({
                 'ID': exp.id[:8] + '...',
@@ -270,7 +429,8 @@ def disp_vis_sum():
         payer_spending.columns = ['Payer', 'Amount Paid']
         fig_payer = px.pie(payer_spending, values='Amount Paid', names='Payer',
                            title='Who Paid What?', hole=0.3,
-                           color_discrete_sequence=px.colors.sequential.RdBu)
+                           color_discrete_sequence=px.colors.sequential.RdBu,
+                           template='plotly_dark') # Apply dark theme to plot
         fig_payer.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig_payer, use_container_width=True)
     
@@ -282,7 +442,8 @@ def disp_vis_sum():
     fig_category = px.bar(category_spending, x='Category', y='Amount',
                           title='Spending Per Category',
                           color='Amount',
-                          color_continuous_scale='Viridis')
+                          color_continuous_scale='Viridis',
+                          template='plotly_dark') # Apply dark theme to plot
     st.plotly_chart(fig_category, use_container_width=True)
 
     st.markdown("---")
@@ -295,7 +456,8 @@ def disp_vis_sum():
     fig_bals = px.bar(bals_df, x='Member', y='Balance',
                       color='Balance',
                       color_continuous_scale='RdYlGn',
-                      title='Net Balance Per Member')
+                      title='Net Balance Per Member',
+                      template='plotly_dark') # Apply dark theme to plot
     fig_bals.update_layout(showlegend=False)
     st.plotly_chart(fig_bals, use_container_width=True)
 
@@ -308,7 +470,8 @@ def disp_vis_sum():
 
     fig_trend = px.line(daily_spending, x='date', y='amount',
                         title='Daily Spending Trend',
-                        labels={'date': 'Date', 'amount': 'Amount ($)'})
+                        labels={'date': 'Date', 'amount': 'Amount ($)'},
+                        template='plotly_dark') # Apply dark theme to plot
     st.plotly_chart(fig_trend, use_container_width=True)
 
 def main():
