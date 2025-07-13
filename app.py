@@ -194,7 +194,8 @@ def disp_exp_hist():
         exps_data = [ ]
         for exp in st.session_state.expenses:
             exps_data.append({
-                'ID': exp.id[:8] + '...',
+                'ID': exp.id[:8] + '...', # Shortened ID for display
+                'Full ID': exp.id, # Full ID for deletion reference
                 'Date': exp.date,
                 'Description': exp.description,
                 'Amount': f"${exp.amount:.2f}",
@@ -202,8 +203,33 @@ def disp_exp_hist():
                 'Participants': ", ".join(exp.participants)
             })
         df_exps = pd.DataFrame(exps_data)
-        st.dataframe(df_exps.set_index('ID'), use_container_width=True)
+        # Display the main table without the "Full ID" column directly
+        st.dataframe(df_exps.drop(columns=['Full ID']).set_index('ID'), use_container_width=True)
 
+        st.markdown("---")
+        # New feature: Delete single expense
+        st.subheader("Delete a Specific Expense")
+        exp_id_to_del_display = st.text_input("Enter the (short) ID of the expense to delete:", key="del_exp_id_input")
+        if st.button("Delete Expense"):
+            # Find the full ID from the shortened display ID
+            full_id_to_delete = None
+            for row in exps_data:
+                if row['ID'] == exp_id_to_del_display:
+                    full_id_to_delete = row['Full ID']
+                    break
+
+            if full_id_to_delete:
+                # Filter out the expense to delete
+                st.session_state.expenses = [
+                    exp for exp in st.session_state.expenses if exp.id != full_id_to_delete
+                ]
+                sv_dat(st.session_state.members, st.session_state.expenses)
+                st.success(f"Expense '{exp_id_to_del_display}' deleted!")
+                st.rerun()
+            else:
+                st.error("Expense ID not found. Please enter a valid shortened ID from the list.")
+
+        # Existing button to clear all
         st.markdown("---")
         if st.button("Clear All Expenses (Start Fresh)"):
             st.session_state.expenses = []
