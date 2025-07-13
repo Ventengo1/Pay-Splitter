@@ -398,7 +398,7 @@ def disp_add_exp():
                 st.success("Expense added successfully!")
                 st.rerun()
 
-# New function for recurring expenses manager
+# Function for recurring expenses manager
 def disp_recurring_exp_manager():
     st.header("🔄 Manage Recurring Expenses")
     st.write("Define expenses that happen regularly (e.g., rent, subscriptions) and easily add them to your history.")
@@ -440,7 +440,7 @@ def disp_recurring_exp_manager():
 
     st.markdown("---")
     st.subheader("Defined Recurring Expenses")
-    if st.session_state.recurring_expenses: # This line was causing the error before initialization
+    if st.session_state.recurring_expenses:
         rec_exps_data = []
         for rec_exp in st.session_state.recurring_expenses:
             rec_exps_data.append({
@@ -534,6 +534,48 @@ def disp_exp_hist():
     st.write("Review all past expenses. You can also delete specific entries or clear the entire history if you want to start fresh.")
 
     if st.session_state.expenses:
+        # Prepare data for export, excluding 'Full ID' for cleaner export
+        export_data = []
+        for exp in st.session_state.expenses:
+            export_data.append({
+                'Date': exp.date,
+                'Description': exp.description,
+                'Amount': exp.amount, # Use float for calculations in external tools
+                'Paid By': exp.paid_by,
+                'Participants': ", ".join(exp.participants),
+                'Category': exp.category,
+                'ID': exp.id # Include full ID for reference
+            })
+        df_export = pd.DataFrame(export_data)
+
+        # Export buttons moved here!
+        st.subheader("Export Expenses")
+        col_csv, col_excel = st.columns(2)
+        with col_csv:
+            st.download_button(
+                label="Download as CSV",
+                data=df_export.to_csv(index=False).encode('utf-8'),
+                file_name="household_expenses.csv",
+                mime="text/csv",
+                help="Download all recorded expenses in CSV format."
+            )
+        with col_excel:
+            try:
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    df_export.to_excel(writer, index=False, sheet_name='Expenses')
+                output.seek(0) # Rewind the buffer
+                st.download_button(
+                    label="Download as Excel (xlsx)",
+                    data=output.read(),
+                    file_name="household_expenses.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    help="Download all recorded expenses in Excel (.xlsx) format."
+                )
+            except ImportError:
+                st.warning("Install `openpyxl` (`pip install openpyxl`) to enable Excel export.")
+
+
         exps_data = []
         for exp in st.session_state.expenses:
             exps_data.append({
@@ -579,50 +621,7 @@ def disp_exp_hist():
     else:
         st.info("No expenses recorded yet. Use the form above to add one.")
 
-# New function for export data
-def disp_export_data():
-    st.header("📥 Export Your Data")
-    st.write("Download your complete expense history for safekeeping or further analysis.")
-
-    if st.session_state.expenses:
-        # Prepare data for export, excluding 'Full ID' for cleaner export
-        export_data = []
-        for exp in st.session_state.expenses:
-            export_data.append({
-                'Date': exp.date,
-                'Description': exp.description,
-                'Amount': exp.amount, # Use float for calculations in external tools
-                'Paid By': exp.paid_by,
-                'Participants': ", ".join(exp.participants),
-                'Category': exp.category,
-                'ID': exp.id # Include full ID for reference
-            })
-        df_export = pd.DataFrame(export_data)
-
-        st.download_button(
-            label="Download Expenses as CSV",
-            data=df_export.to_csv(index=False).encode('utf-8'),
-            file_name="household_expenses.csv",
-            mime="text/csv",
-            help="Download all recorded expenses in CSV format."
-        )
-
-        try:
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df_export.to_excel(writer, index=False, sheet_name='Expenses')
-            output.seek(0) # Rewind the buffer
-            st.download_button(
-                label="Download Expenses as Excel (xlsx)",
-                data=output.read(),
-                file_name="household_expenses.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                help="Download all recorded expenses in Excel (.xlsx) format."
-            )
-        except ImportError:
-            st.warning("Install `openpyxl` (`pip install openpyxl`) to enable Excel export.")
-    else:
-        st.info("No expenses to export yet.")
+# The disp_export_data function is now removed as its content is merged into disp_exp_hist.
 
 def disp_vis_sum():
     st.header("Visual Summary of Expenses")
@@ -732,8 +731,7 @@ def main():
         st.markdown("---")
         disp_exp_hist()
         
-        st.markdown("---")
-        disp_export_data()
+        # disp_export_data() # This call is now removed as the content is moved
 
     elif page_sel == "Visual Summary":
         disp_vis_sum()
