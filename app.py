@@ -5,7 +5,7 @@ import uuid
 import json
 import os
 import plotly.express as px
-from io import BytesIO # <--- ADDED THIS IMPORT
+from io import BytesIO
 
 DATA_FILE = "household_data.json"
 
@@ -157,6 +157,17 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# --- Initialize session state variables at the top ---
+# This ensures they always exist before being accessed
+if 'members' not in st.session_state:
+    st.session_state.members = ['Alice', 'Bob', 'Charlie', 'Tim']
+if 'expenses' not in st.session_state:
+    st.session_state.expenses = []
+if 'recurring_expenses' not in st.session_state:
+    st.session_state.recurring_expenses = []
+if 'data_loaded_flag' not in st.session_state:
+    st.session_state.data_loaded_flag = False # Flag to control initial data load
+
 DATA_FILE = "household_data.json"
 
 DEFAULT_CATEGORIES = [
@@ -275,10 +286,7 @@ def ld_dat():
                 exp.category = 'Uncategorized'
         
         st.sidebar.success("Data loaded!")
-    else:
-        st.session_state.members = ['Alice', 'Bob', 'Charlie', 'Tim']
-        st.session_state.expenses = []
-        st.session_state.recurring_expenses = []
+    # No else block here, as default initialization is done at the very top.
 
 def calc_bals(mems, exps):
     bals = {mem: 0.0 for mem in mems}
@@ -432,7 +440,7 @@ def disp_recurring_exp_manager():
 
     st.markdown("---")
     st.subheader("Defined Recurring Expenses")
-    if st.session_state.recurring_expenses:
+    if st.session_state.recurring_expenses: # This line was causing the error before initialization
         rec_exps_data = []
         for rec_exp in st.session_state.recurring_expenses:
             rec_exps_data.append({
@@ -599,9 +607,7 @@ def disp_export_data():
             help="Download all recorded expenses in CSV format."
         )
 
-        # To export as Excel, you need to have openpyxl installed: pip install openpyxl
         try:
-            # from io import BytesIO # Moved to top of file
             output = BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df_export.to_excel(writer, index=False, sheet_name='Expenses')
@@ -693,7 +699,8 @@ def main():
     st.title("🏡 Simple Household Splitter (No More Cheating... You pay what you truly owe💵💵💵)")
     st.write("Welcome to your ultimate tool for managing shared household expenses! Easily track spending, calculate balances, and simplify settlements among housemates.")
 
-    if 'data_loaded_flag' not in st.session_state:
+    # Only load data from file if not already loaded in this session
+    if not st.session_state.data_loaded_flag:
         ld_dat()
         st.session_state.data_loaded_flag = True
 
@@ -717,7 +724,7 @@ def main():
         disp_add_exp()
 
         st.markdown("---")
-        disp_recurring_exp_manager() # <--- CALLING THE NEW RECURRING EXPENSE FUNCTION HERE
+        disp_recurring_exp_manager()
 
         st.markdown("---")
         disp_curr_bals()
@@ -726,7 +733,7 @@ def main():
         disp_exp_hist()
         
         st.markdown("---")
-        disp_export_data() # <--- CALLING THE NEW EXPORT DATA FUNCTION HERE
+        disp_export_data()
 
     elif page_sel == "Visual Summary":
         disp_vis_sum()
