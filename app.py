@@ -290,7 +290,7 @@ def sug_setts(bals):
 def disp_mems():
     st.header("Manage Members")
     st.write("Easily add, remove, or update the members of your household here. Keeping this list accurate ensures fair splitting!")
-    st.image("https://via.placeholder.com/600x200?text=Household+Members+Image", caption="Organize your household members", use_container_width =True)
+    st.image("https://images.unsplash.com/photo-1543269865-cbf427fdce8f?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", caption="Organize your household members for fair splitting", use_column_width=True)
     
     col_input, col_button = st.columns([3, 1])
     with col_input:
@@ -311,7 +311,7 @@ def disp_mems():
 def disp_add_exp():
     st.header("➕ Add New Expense")
     st.write("Log new expenses quickly and accurately. Specify who paid, who shared the cost, and categorize it for better tracking.")
-    st.image("https://via.placeholder.com/600x200?text=Add+Expense+Image", caption="Record your latest spending", use_container_width =True)
+    st.image("https://images.unsplash.com/photo-1579621970795-87facc2f976d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", caption="Record your latest spending with ease", use_column_width=True)
 
     with st.form("add_expense_form", clear_on_submit=True):
         desc = st.text_input("Description")
@@ -351,7 +351,7 @@ def disp_add_exp():
 def disp_curr_bals():
     st.header("Current Balances")
     st.write("See who owes what to whom. This section provides a real-time overview of current financial standings among members.")
-    st.image("https://via.placeholder.com/600x200?text=Balances+Overview+Image", caption="Track outstanding payments", use_container_width =True)
+    st.image("https://images.unsplash.com/photo-1563986768605-e41c6a2e4de2?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", caption="Track outstanding payments at a glance", use_column_width=True)
 
     bals = calc_bals(st.session_state.members, st.session_state.expenses)
 
@@ -370,7 +370,7 @@ def disp_curr_bals():
 def disp_exp_hist():
     st.header("Expense History")
     st.write("Review all past expenses. You can also delete specific entries or clear the entire history if you want to start fresh.")
-    st.image("https://via.placeholder.com/600x200?text=Expense+History+Image", caption="Review past transactions", use_container_width =True)
+    st.image("https://images.unsplash.com/photo-1563986768605-e41c6a2e4de2?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", caption="Review past transactions in detail", use_column_width=True)
 
     if st.session_state.expenses:
         exps_data = []
@@ -431,7 +431,7 @@ def disp_vis_sum():
     with col1:
         total_spent = sum(exp.amount for exp in st.session_state.expenses)
         st.metric(label="Total Household Spending", value=f"${total_spent:.2f}")
-        st.image("https://via.placeholder.com/300x150?text=Total+Spending+Icon", caption="Total expenses recorded", use_container_width =True)
+        st.image("https://images.unsplash.com/photo-1579621970795-87facc2f976d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", caption="Total expenses recorded across all members", use_column_width=True)
 
     with col2:
         exp_df = pd.DataFrame([exp.to_dict() for exp in st.session_state.expenses])
@@ -508,7 +508,7 @@ def main():
         "Add members, log expenses, and instantly see who owes whom. "
         "The visual summary provides insights into spending habits."
     )
-    st.sidebar.image("https://via.placeholder.com/250x150?text=App+Info+Image", caption="Organize your finances effortlessly", use_container_width =True)
+    st.sidebar.image("https://images.unsplash.com/photo-1582213782179-e0d53f9ea930?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", caption="Organize your finances effortlessly", use_column_width=True)
 
 
     st.markdown("---")
