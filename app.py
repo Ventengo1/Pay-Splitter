@@ -400,7 +400,7 @@ def disp_add_exp():
 
 # Function for recurring expenses manager
 def disp_recurring_exp_manager():
-    st.header("🔄 Manage Recurring Expenses")
+    st.header(" Manage Recurring Expenses")
     st.write("Define expenses that happen regularly (e.g., rent, subscriptions) and easily add them to your history.")
 
     with st.form("add_recurring_expense_form", clear_on_submit=True):
@@ -548,7 +548,7 @@ def disp_exp_hist():
             })
         df_export = pd.DataFrame(export_data)
 
-        # Export CSV button
+        # Export CSV button tried to do excel but just having errors so not gonna worry about that
         st.download_button(
             label="**Export Data to CSV**", # Bold label for emphasis
             data=df_export.to_csv(index=False).encode('utf-8'),
@@ -717,3 +717,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
